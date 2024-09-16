@@ -14,6 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @Entity
 @ToString
+@Builder
 @Table(name = "check_in")
 public class CheckIn {
     @Id
@@ -34,5 +35,9 @@ public class CheckIn {
 
     @OneToMany(mappedBy = "checkIn", cascade = CascadeType.ALL)
     private List<CheckInUser> users = new ArrayList<>();
+//    public CheckIn(Integer locationId, Integer userId){
+//        this.locationId = locationId;
+//        this.userId = userId;
+//    }
 
 }

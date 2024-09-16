@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CheckInService {
@@ -27,46 +29,85 @@ public class CheckInService {
     @Autowired
     private UserMapper userMapper;
 
-    public List<UsersResponseDTO> checkIn(@RequestBody CheckInRequest checkInRequest) {
-        CheckIn checkIn = new CheckIn();
-        checkIn.setLocationId(checkInRequest.getLocationId());
-        checkIn.setUserId(checkInRequest.getInitiatorId());
-        checkInRepository.save(checkIn);
+    public HashMap<Object, Object> checkIn(CheckInRequest checkInRequest) {
+        HashMap<Object, Object> msg = new HashMap<>();
+        CheckIn checkIn= CheckIn.builder()
+                .locationId(checkInRequest.getLocationId())
+                .userId(checkInRequest.getInitiatorId())
+                .build();
+//      checkIn.setLocationId(checkInRequest.getLocationId());
+//      checkIn.setUserId(checkInRequest.getInitiatorId());
+        try{
+
+            checkInRepository.save(checkIn);
+            msg.put("success", "saved main check in successfully");
+
+        }catch (Exception e){
+            msg.put("error", "can not save main check in");
+
+
+        }
+
 
         // Find the initiator (the user who is checking in)
         Users initiator = userRepository.findById(checkInRequest.getInitiatorId())
                 .orElseThrow(() -> new RuntimeException("USER NOT FOUND!"));
 
         // Save initiator check-in information
-        CheckInUser checkInUser = new CheckInUser();
-        checkInUser.setCheckIn(checkIn);
-        checkInUser.setUser(initiator);
-        checkInUser.setIsInitiator(true);
-        checkInUserRepository.save(checkInUser);
+        CheckInUser checkInUser = CheckInUser.builder()
+                .checkIn(checkIn)
+                .user(initiator)
+                .isInitiator(true)
+                .build();
+
+//        checkInUser.setCheckIn(checkIn);
+//        checkInUser.setUser(initiator);
+//        checkInUser.setIsInitiator(true);
+
+        try{
+            checkInUserRepository.save(checkInUser);
+            msg.put("success", "saved initiator check in successfully");
+        }
+        catch (Exception e){
+            msg.put("error", "can not save initiator check in");
+        }
 
         // Get friends and save their check-in details
         List<Users> friends = new ArrayList<>();
         List<Integer> friendIds = checkInRequest.getFriendsId();
         if (friendIds != null) {
             for (Integer friendId : friendIds) {
-                Users friend = userRepository.findById(friendId)
-                        .orElseThrow(() -> new RuntimeException("Friend not found"));
+                try {
+                    Optional<Users> friendOpt = userRepository.findById(friendId);
+                    if (friendOpt.isPresent()) {
+                        Users friend = friendOpt.get();
 
-                CheckInUser checkInFriend = new CheckInUser();
-                checkInFriend.setCheckIn(checkIn);
-                checkInFriend.setUser(friend);
-                checkInFriend.setIsInitiator(false);
-                checkInUserRepository.save(checkInFriend);
+                        CheckInUser checkInFriend = CheckInUser.builder()
+                                .checkIn(checkIn)
+                                .user(friend)
+                                .isInitiator(false)
+                                .build();
+                        checkInUserRepository.save(checkInFriend);
 
-                friends.add(friend);  // Add friend to list
+                        friends.add(friend);  // Add friend to list
+                    } else {
+                        msg.put("error", "Friend not found with ID: " + friendId);
+                    }
+                    msg.put("success", "saved check in successfully");
+
+                } catch (Exception e) {
+                    msg.put("error", "Exception occurred while processing friend with ID: " + friendId);
+                }
             }
+
+
         }
 
-        // Convert initiator and friends to UsersResponseDTO
-        List<UsersResponseDTO> userResponseDTOs = new ArrayList<>();
-        userResponseDTOs.add(userMapper.toResponseDto(initiator));  // Add initiator to DTO list
-        friends.forEach(friend -> userResponseDTOs.add(userMapper.toResponseDto(friend)));  // Add friends to DTO list
+//        // Convert initiator and friends to UsersResponseDTO
+//        List<UsersResponseDTO> userResponseDTOs = new ArrayList<>();
+//        userResponseDTOs.add(userMapper.toResponseDto(initiator));  // Add initiator to DTO list
+//        friends.forEach(friend -> userResponseDTOs.add(userMapper.toResponseDto(friend)));  // Add friends to DTO list
 
-        return userResponseDTOs;
+        return msg;
     }
 }

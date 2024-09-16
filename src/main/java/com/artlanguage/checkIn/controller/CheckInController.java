@@ -19,7 +19,7 @@ public class CheckInController {
     private CheckInService checkInService;
 
     @PostMapping("/checkin")
-    public ResponseEntity<List<UsersResponseDTO>> createCheckIn(@RequestBody CheckInRequest checkInRequest) {
+    public ResponseEntity<?> createCheckIn(@RequestBody CheckInRequest checkInRequest) {
         return ResponseEntity.ok(checkInService.checkIn(checkInRequest));
     }
 }
